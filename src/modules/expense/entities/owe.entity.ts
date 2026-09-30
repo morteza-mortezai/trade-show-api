@@ -8,20 +8,17 @@ import {
 import { BaseEntity } from '../../../common/entity/base.entity';
 import { User } from '../../user/entities/user.entity';
 
-@Entity({ tableName: 'expenses' })
-@Unique({ properties: ['paidBy', 'expenseFor'] })
-export class Expense extends BaseEntity {
+@Entity({ tableName: 'owes' })
+@Unique({ properties: ['fromUser', 'toUser'] })
+export class Owe extends BaseEntity {
   [OptionalProps]!: 'createdAt';
 
   @ManyToOne(() => User)
-  paidBy!: User;
+  fromUser!: User;
 
   @ManyToOne(() => User)
-  expenseFor!: User;
+  toUser!: User;
 
   @Property({ type: 'number' })
   amount!: number;
-
-  @Property({ type: 'string' })
-  description!: string;
 }
