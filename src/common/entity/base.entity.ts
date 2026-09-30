@@ -1,4 +1,4 @@
-import { PrimaryKey, Property } from '@mikro-orm/postgresql';
+import { PrimaryKey, Property } from '@mikro-orm/sqlite';
 import { ulid } from 'ulid';
 
 export abstract class BaseEntity {
