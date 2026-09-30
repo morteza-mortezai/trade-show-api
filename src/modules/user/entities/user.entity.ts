@@ -9,21 +9,12 @@ import { BaseEntity } from '../../../common/entity/base.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 
 @Entity({ tableName: 'users' })
-@Unique({ properties: ['tenant', 'phone'] })
+@Unique({ properties: ['tenant'] })
 export class User extends BaseEntity {
-  [OptionalProps]!: 'createdAt' | 'gender';
+  [OptionalProps]!: 'createdAt';
   @ManyToOne(() => Tenant, { deleteRule: 'cascade' })
   tenant!: Tenant;
 
-  @Property({ nullable: true })
-  firstName!: string | null;
-
-  @Property({ nullable: true })
-  lastName!: string | null;
-
-  @Property({ length: 11, type: 'string' })
-  phone!: string;
-
-  @Property({ default: true })
-  gender!: boolean;
+  @Property()
+  fullName!: string;
 }
