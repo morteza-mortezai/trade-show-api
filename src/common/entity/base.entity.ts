@@ -5,6 +5,6 @@ export abstract class BaseEntity {
   @PrimaryKey({ type: 'string', columnType: 'char(26)' })
   id = ulid();
 
-  @Property({ defaultRaw: 'now()', type: 'timestamptz' })
+  @Property({ defaultRaw: 'CURRENT_TIMESTAMP', type: 'datetime' })
   createdAt: Date = new Date();
 }

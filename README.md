@@ -20,6 +20,12 @@ To reset the database, run all migrations, and seed the data:
 npm run db:reset
 ```
 
+The default user seeder creates 12 people for testing shared expenses. It is idempotent, so it can also be run on its own without duplicating those people:
+
+```bash
+npm run db:seed
+```
+
 > **Warning:** `db:reset` drops the existing database schema before recreating it.
 
 ## Run Project
