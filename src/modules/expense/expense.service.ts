@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UserService } from '../user/user.service';
-import { EntityManager } from '@mikro-orm/sqlite';
+import { EntityManager, FilterQuery } from '@mikro-orm/sqlite';
 import { Expense } from './entities/expense.entity';
 import { Owe } from './entities/owe.entity';
 import Decimal from 'decimal.js';
 import { User } from '../user/entities/user.entity';
+import { FindExpenseDto } from './dto/find-expense.dto';
+import { FindOweDto } from './dto/find-owe.dto';
 
 @Injectable()
 export class ExpenseService {
@@ -34,21 +36,58 @@ export class ExpenseService {
     });
   }
 
-  async findAll(page = 1, limit = 20) {
-    const offset = (page - 1) * limit;
+  async findAll(filters: FindExpenseDto) {
+    const {
+      page = 1,
+      limit = 20,
+      paidById,
+      expenseForId,
+      userId,
+      search,
+      fromDate,
+      toDate,
+    } = filters;
 
-    const [expenses, total] = await this.em.findAndCount(
-      Expense,
-      {},
-      {
-        populate: ['paidBy', 'expenseFor'],
-        limit,
-        offset,
-        orderBy: {
-          createdAt: 'DESC',
-        },
+    const where: FilterQuery<Expense> = {};
+
+    if (paidById) {
+      where.paidBy = paidById;
+    }
+
+    if (expenseForId) {
+      where.expenseFor = expenseForId;
+    }
+
+    if (userId) {
+      where.$or = [{ paidBy: userId }, { expenseFor: userId }];
+    }
+
+    if (search) {
+      where.description = {
+        $like: `%${search}%`,
+      };
+    }
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+
+      if (fromDate) {
+        where.createdAt.$gte = new Date(fromDate);
+      }
+
+      if (toDate) {
+        where.createdAt.$lte = new Date(toDate);
+      }
+    }
+
+    const [expenses, total] = await this.em.findAndCount(Expense, where, {
+      populate: ['paidBy', 'expenseFor'],
+      limit,
+      offset: (page - 1) * limit,
+      orderBy: {
+        createdAt: 'DESC',
       },
-    );
+    });
 
     return {
       data: expenses,
@@ -61,24 +100,34 @@ export class ExpenseService {
     };
   }
 
-  async findAllOws(page = 1, limit = 20) {
-    const offset = (page - 1) * limit;
+  async findAllOws(filters: FindOweDto) {
+    const { page = 1, limit = 20, fromUserId, toUserId, userId } = filters;
 
-    const [expenses, total] = await this.em.findAndCount(
-      Owe,
-      {},
-      {
-        populate: ['fromUser', 'toUser'],
-        limit,
-        offset,
-        orderBy: {
-          createdAt: 'DESC',
-        },
+    const where: FilterQuery<Owe> = {};
+
+    if (fromUserId) {
+      where.fromUser = fromUserId;
+    }
+
+    if (toUserId) {
+      where.toUser = toUserId;
+    }
+
+    if (userId) {
+      where.$or = [{ fromUser: userId }, { toUser: userId }];
+    }
+
+    const [owes, total] = await this.em.findAndCount(Owe, where, {
+      populate: ['fromUser', 'toUser'],
+      limit,
+      offset: (page - 1) * limit,
+      orderBy: {
+        createdAt: 'DESC',
       },
-    );
+    });
 
     return {
-      data: expenses,
+      data: owes,
       meta: {
         page,
         limit,

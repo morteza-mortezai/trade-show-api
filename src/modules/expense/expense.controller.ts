@@ -15,11 +15,11 @@ export class ExpenseController {
 
   @Get()
   findAll(@Query() query: FindExpenseDto) {
-    return this.expenseService.findAll(query.page, query.limit);
+    return this.expenseService.findAll(query);
   }
 
   @Get()
   findAllOwes(@Query() query: FindOweDto) {
-    return this.expenseService.findAllOws(query.page, query.limit);
+    return this.expenseService.findAllOws(query);
   }
 }

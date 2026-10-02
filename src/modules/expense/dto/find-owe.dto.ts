@@ -1,17 +1,16 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
+import { PaginationDto } from './pagination.dto';
 
-export class FindOweDto {
+export class FindOweDto extends PaginationDto {
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page: number = 1;
+  @IsString()
+  fromUserId?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit: number = 20;
+  @IsString()
+  toUserId?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
