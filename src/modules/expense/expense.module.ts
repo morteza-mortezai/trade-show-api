@@ -5,10 +5,11 @@ import { UserModule } from '../user/user.module';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Expense } from './entities/expense.entity';
 import { Owe } from './entities/owe.entity';
+import { ExpenseRepository } from './expense.repository';
 
 @Module({
   imports: [UserModule, MikroOrmModule.forFeature([Expense, Owe])],
   controllers: [ExpenseController],
-  providers: [ExpenseService],
+  providers: [ExpenseRepository, ExpenseService],
 })
 export class ExpenseModule {}

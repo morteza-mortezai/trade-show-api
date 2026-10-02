@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UserService } from '../user/user.service';
-import { EntityManager, FilterQuery } from '@mikro-orm/sqlite';
-import { Expense } from './entities/expense.entity';
+import { EntityManager } from '@mikro-orm/sqlite';
 import { Owe } from './entities/owe.entity';
 import Decimal from 'decimal.js';
 import { User } from '../user/entities/user.entity';
 import { FindExpenseDto } from './dto/find-expense.dto';
 import { FindOweDto } from './dto/find-owe.dto';
+import { ExpenseRepository } from './expense.repository';
 
 @Injectable()
 export class ExpenseService {
   constructor(
     private readonly userService: UserService,
     private readonly em: EntityManager,
+    private readonly expenseRepository: ExpenseRepository,
   ) {}
 
   async create(dto: CreateExpenseDto) {
@@ -37,104 +38,11 @@ export class ExpenseService {
   }
 
   async findAll(filters: FindExpenseDto) {
-    const {
-      page = 1,
-      limit = 20,
-      paidById,
-      expenseForId,
-      userId,
-      search,
-      fromDate,
-      toDate,
-    } = filters;
-
-    const where: FilterQuery<Expense> = {};
-
-    if (paidById) {
-      where.paidBy = paidById;
-    }
-
-    if (expenseForId) {
-      where.expenseFor = expenseForId;
-    }
-
-    if (userId) {
-      where.$or = [{ paidBy: userId }, { expenseFor: userId }];
-    }
-
-    if (search) {
-      where.description = {
-        $like: `%${search}%`,
-      };
-    }
-
-    if (fromDate || toDate) {
-      where.createdAt = {};
-
-      if (fromDate) {
-        where.createdAt.$gte = new Date(fromDate);
-      }
-
-      if (toDate) {
-        where.createdAt.$lte = new Date(toDate);
-      }
-    }
-
-    const [expenses, total] = await this.em.findAndCount(Expense, where, {
-      populate: ['paidBy', 'expenseFor'],
-      limit,
-      offset: (page - 1) * limit,
-      orderBy: {
-        createdAt: 'DESC',
-      },
-    });
-
-    return {
-      data: expenses,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return this.expenseRepository.findExpenses(filters);
   }
 
   async findAllOws(filters: FindOweDto) {
-    const { page = 1, limit = 20, fromUserId, toUserId, userId } = filters;
-
-    const where: FilterQuery<Owe> = {};
-
-    if (fromUserId) {
-      where.fromUser = fromUserId;
-    }
-
-    if (toUserId) {
-      where.toUser = toUserId;
-    }
-
-    if (userId) {
-      where.$or = [{ fromUser: userId }, { toUser: userId }];
-    }
-
-    const [owes, total] = await this.em.findAndCount(Owe, where, {
-      populate: ['fromUser', 'toUser'],
-      limit,
-      offset: (page - 1) * limit,
-      orderBy: {
-        createdAt: 'DESC',
-      },
-    });
-
-    return {
-      data: owes,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return this.expenseRepository.findOwes(filters);
   }
 
   private createExpense(
@@ -146,9 +54,7 @@ export class ExpenseService {
       description?: string;
     },
   ) {
-    const expense = em.create(Expense, data);
-
-    em.persist(expense);
+    this.expenseRepository.createExpense(em, data);
   }
 
   private async updateOweBalance(
@@ -157,18 +63,11 @@ export class ExpenseService {
     expenseFor: User,
     amount: number,
   ) {
-    const existingOwe = await em.findOne(Owe, {
-      $or: [
-        {
-          fromUser: paidBy,
-          toUser: expenseFor,
-        },
-        {
-          fromUser: expenseFor,
-          toUser: paidBy,
-        },
-      ],
-    });
+    const existingOwe = await this.expenseRepository.findOweBetween(
+      em,
+      paidBy,
+      expenseFor,
+    );
 
     if (!existingOwe) {
       this.createOwe(em, paidBy, expenseFor, amount);
@@ -184,13 +83,12 @@ export class ExpenseService {
     toUser: User,
     amount: number,
   ) {
-    const owe = em.create(Owe, {
+    this.expenseRepository.createOwe(
+      em,
       fromUser,
       toUser,
-      balance: new Decimal(amount).toNumber(),
-    });
-
-    em.persist(owe);
+      new Decimal(amount).toNumber(),
+    );
   }
 
   private applyBalanceChange(
@@ -209,7 +107,7 @@ export class ExpenseService {
       : currentBalance.minus(expenseAmount);
 
     if (newBalance.isZero()) {
-      em.remove(owe);
+      this.expenseRepository.removeOwe(em, owe);
       return;
     }
 
