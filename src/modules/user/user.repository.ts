@@ -1,4 +1,4 @@
-import { EntityRepository } from '@mikro-orm/sqlite';
+import { EntityManager, EntityRepository } from '@mikro-orm/sqlite';
 import { Injectable } from '@nestjs/common';
 import { User } from './entities/user.entity';
 
@@ -17,5 +17,7 @@ export interface PersonCursor {
 
 @Injectable()
 export class UserRepository extends EntityRepository<User> {
-  // constructor(private readonly entityManager: EntityManager) {}
+  constructor(entityManager: EntityManager) {
+    super(entityManager, User);
+  }
 }

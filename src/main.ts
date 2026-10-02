@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { getSwaggerConfig } from './config/swagger.config';
 import cookieParser from 'cookie-parser';
+import { MikroORM, RequestContext } from '@mikro-orm/core';
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
   const logger = new Logger('APP');
@@ -17,6 +19,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   app.use(cookieParser());
+
+  const orm = app.get(MikroORM);
+  app.use(
+    (_req: Request, _res: Response, next: NextFunction) =>
+      RequestContext.create(orm.em, next),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({

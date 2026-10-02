@@ -1,15 +1,8 @@
-import {
-  Entity,
-  Property,
-  OptionalProps,
-  Unique,
-  ManyToOne,
-} from '@mikro-orm/core';
+import { Entity, Property, OptionalProps, ManyToOne } from '@mikro-orm/core';
 import { BaseEntity } from '../../../common/entity/base.entity';
 import { User } from '../../user/entities/user.entity';
 
 @Entity({ tableName: 'expenses' })
-@Unique({ properties: ['paidBy', 'expenseFor'] })
 export class Expense extends BaseEntity {
   [OptionalProps]!: 'createdAt';
 

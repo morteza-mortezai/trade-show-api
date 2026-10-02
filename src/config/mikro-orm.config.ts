@@ -20,6 +20,7 @@ const ormConfig = defineConfig({
 });
 
 export const mikroOrmConfig: MikroOrmModuleAsyncOptions = {
+  driver: SqliteDriver,
   inject: [ConfigService],
 
   useFactory: (configService: ConfigService) => {
@@ -27,9 +28,9 @@ export const mikroOrmConfig: MikroOrmModuleAsyncOptions = {
       ...ormConfig,
       host: configService.get<string>('DB_HOST') ?? 'localhost',
       port: Number(configService.get<string>('DB_PORT') ?? 5432),
-      dbName: configService.get<string>('DB_NAME') ?? 'cyberian',
+      dbName: configService.get<string>('DB_NAME') ?? 'db',
       ensureDatabase: true,
-      registerRequestContext: true,
+      registerRequestContext: false,
 
       // allowGlobalContext: true,
     };

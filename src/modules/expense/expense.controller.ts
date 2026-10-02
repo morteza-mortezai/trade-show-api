@@ -18,7 +18,7 @@ export class ExpenseController {
     return this.expenseService.findAll(query);
   }
 
-  @Get()
+  @Get('owes')
   findAllOwes(@Query() query: FindOweDto) {
     return this.expenseService.findAllOws(query);
   }
