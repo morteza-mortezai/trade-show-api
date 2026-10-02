@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { ExpenseService } from './expense.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 
@@ -9,5 +9,10 @@ export class ExpenseController {
   @Post()
   create(@Body() createExpenseDto: CreateExpenseDto) {
     return this.expenseService.create(createExpenseDto);
+  }
+
+  @Get('all')
+  getAll() {
+    return this.expenseService.create();
   }
 }

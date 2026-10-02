@@ -5,6 +5,7 @@ import { EntityManager } from '@mikro-orm/sqlite';
 import { Expense } from './entities/expense.entity';
 import { Owe } from './entities/owe.entity';
 import Decimal from 'decimal.js';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class ExpenseService {
@@ -12,69 +13,103 @@ export class ExpenseService {
     private readonly userService: UserService,
     private readonly em: EntityManager,
   ) {}
-  async create(createExpenseDto: CreateExpenseDto) {
-    const { amount, expenseForId, paidById, description } = createExpenseDto;
+
+  async create(dto: CreateExpenseDto) {
+    const { amount, expenseForId, paidById, description } = dto;
+
     const [paidBy, expenseFor] = await Promise.all([
       this.userService.findOneOrFail(paidById),
       this.userService.findOneOrFail(expenseForId),
     ]);
 
-    this.em.transactional(async (em) => {
-      const expense = em.create(Expense, {
+    await this.em.transactional(async (em) => {
+      this.createExpense(em, {
+        amount,
         paidBy,
         expenseFor,
-        amount,
         description,
       });
 
-      em.persist(expense);
+      await this.updateOweBalance(em, paidBy, expenseFor, amount);
+    });
+  }
 
-      // calc balance
+  private createExpense(
+    em: EntityManager,
+    data: {
+      amount: number;
+      paidBy: User;
+      expenseFor: User;
+      description?: string;
+    },
+  ) {
+    const expense = em.create(Expense, data);
 
-      const exitingOweRecord = await em.findOne(
-        Owe,
+    em.persist(expense);
+  }
+
+  private async updateOweBalance(
+    em: EntityManager,
+    paidBy: User,
+    expenseFor: User,
+    amount: number,
+  ) {
+    const existingOwe = await em.findOne(Owe, {
+      $or: [
         {
-          $or: [
-            {
-              fromUser: paidBy,
-              toUser: expenseFor,
-            },
-            {
-              fromUser: expenseFor,
-              toUser: paidBy,
-            },
-          ],
-        },
-        { populate: ['fromUser', 'toUser'] },
-      );
-
-      if (exitingOweRecord) {
-        const isForwardDirection = exitingOweRecord.fromUser == paidBy;
-
-        const currentBalance = new Decimal(exitingOweRecord.balance);
-
-        const decimalAmount = new Decimal(amount);
-
-        if (isForwardDirection) {
-          exitingOweRecord.balance = currentBalance
-            .plus(decimalAmount)
-            .toNumber();
-        } else {
-          exitingOweRecord.balance = currentBalance
-            .minus(decimalAmount)
-            .toNumber();
-        }
-      } else {
-        const owe = em.create(Owe, {
           fromUser: paidBy,
           toUser: expenseFor,
-          balance: amount,
-        });
-
-        em.persist(owe);
-      }
-
-      await em.flush();
+        },
+        {
+          fromUser: expenseFor,
+          toUser: paidBy,
+        },
+      ],
     });
+
+    if (!existingOwe) {
+      this.createOwe(em, paidBy, expenseFor, amount);
+      return;
+    }
+
+    this.applyBalanceChange(em, existingOwe, paidBy, amount);
+  }
+
+  private createOwe(
+    em: EntityManager,
+    fromUser: User,
+    toUser: User,
+    amount: number,
+  ) {
+    const owe = em.create(Owe, {
+      fromUser,
+      toUser,
+      balance: new Decimal(amount).toNumber(),
+    });
+
+    em.persist(owe);
+  }
+
+  private applyBalanceChange(
+    em: EntityManager,
+    owe: Owe,
+    paidBy: User,
+    amount: number,
+  ) {
+    const currentBalance = new Decimal(owe.balance);
+    const expenseAmount = new Decimal(amount);
+
+    const isForwardDirection = owe.fromUser.id === paidBy.id;
+
+    const newBalance = isForwardDirection
+      ? currentBalance.plus(expenseAmount)
+      : currentBalance.minus(expenseAmount);
+
+    if (newBalance.isZero()) {
+      em.remove(owe);
+      return;
+    }
+
+    owe.balance = newBalance.toNumber();
   }
 }
