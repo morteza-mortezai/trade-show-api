@@ -1,26 +1,80 @@
 import { Injectable } from '@nestjs/common';
 import { CreateExpenseDto } from './dto/create-expense.dto';
-import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { UserService } from '../user/user.service';
+import { EntityManager } from '@mikro-orm/sqlite';
+import { Expense } from './entities/expense.entity';
+import { Owe } from './entities/owe.entity';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class ExpenseService {
-  create(createExpenseDto: CreateExpenseDto) {
-    return 'This action adds a new expense';
-  }
+  constructor(
+    private readonly userService: UserService,
+    private readonly em: EntityManager,
+  ) {}
+  async create(createExpenseDto: CreateExpenseDto) {
+    const { amount, expenseForId, paidById, description } = createExpenseDto;
+    const [paidBy, expenseFor] = await Promise.all([
+      this.userService.findOneOrFail(paidById),
+      this.userService.findOneOrFail(expenseForId),
+    ]);
 
-  findAll() {
-    return `This action returns all expense`;
-  }
+    this.em.transactional(async (em) => {
+      const expense = em.create(Expense, {
+        paidBy,
+        expenseFor,
+        amount,
+        description,
+      });
 
-  findOne(id: number) {
-    return `This action returns a #${id} expense`;
-  }
+      em.persist(expense);
 
-  update(id: number, updateExpenseDto: UpdateExpenseDto) {
-    return `This action updates a #${id} expense`;
-  }
+      // calc balance
 
-  remove(id: number) {
-    return `This action removes a #${id} expense`;
+      const exitingOweRecord = await em.findOne(
+        Owe,
+        {
+          $or: [
+            {
+              fromUser: paidBy,
+              toUser: expenseFor,
+            },
+            {
+              fromUser: expenseFor,
+              toUser: paidBy,
+            },
+          ],
+        },
+        { populate: ['fromUser', 'toUser'] },
+      );
+
+      if (exitingOweRecord) {
+        const isForwardDirection = exitingOweRecord.fromUser == paidBy;
+
+        const currentBalance = new Decimal(exitingOweRecord.balance);
+
+        const decimalAmount = new Decimal(amount);
+
+        if (isForwardDirection) {
+          exitingOweRecord.balance = currentBalance
+            .plus(decimalAmount)
+            .toNumber();
+        } else {
+          exitingOweRecord.balance = currentBalance
+            .minus(decimalAmount)
+            .toNumber();
+        }
+      } else {
+        const owe = em.create(Owe, {
+          fromUser: paidBy,
+          toUser: expenseFor,
+          balance: amount,
+        });
+
+        em.persist(owe);
+      }
+
+      await em.flush();
+    });
   }
 }

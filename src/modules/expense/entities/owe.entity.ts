@@ -20,5 +20,5 @@ export class Owe extends BaseEntity {
   toUser!: User;
 
   @Property({ type: 'number' })
-  amount!: number;
+  balance!: number;
 }

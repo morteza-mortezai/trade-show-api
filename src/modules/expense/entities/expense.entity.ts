@@ -22,6 +22,6 @@ export class Expense extends BaseEntity {
   @Property({ type: 'number' })
   amount!: number;
 
-  @Property({ type: 'string' })
-  description!: string;
+  @Property({ type: 'string', nullable: true })
+  description?: string;
 }

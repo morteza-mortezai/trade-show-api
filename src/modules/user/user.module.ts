@@ -9,5 +9,6 @@ import { UserRepository } from './user.repository';
   imports: [MikroOrmModule.forFeature([User])],
   controllers: [UserController],
   providers: [UserRepository, UserService],
+  exports: [UserService],
 })
 export class UserModule {}

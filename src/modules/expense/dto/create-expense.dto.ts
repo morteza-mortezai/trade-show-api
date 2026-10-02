@@ -11,7 +11,7 @@ export class CreateExpenseDto {
 
   @IsInt()
   @IsNotEmpty()
-  amount!: string;
+  amount!: number;
 
   @IsString()
   @IsOptional()
