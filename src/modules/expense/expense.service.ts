@@ -34,6 +34,60 @@ export class ExpenseService {
     });
   }
 
+  async findAll(page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+
+    const [expenses, total] = await this.em.findAndCount(
+      Expense,
+      {},
+      {
+        populate: ['paidBy', 'expenseFor'],
+        limit,
+        offset,
+        orderBy: {
+          createdAt: 'DESC',
+        },
+      },
+    );
+
+    return {
+      data: expenses,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findAllOws(page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+
+    const [expenses, total] = await this.em.findAndCount(
+      Owe,
+      {},
+      {
+        populate: ['fromUser', 'toUser'],
+        limit,
+        offset,
+        orderBy: {
+          createdAt: 'DESC',
+        },
+      },
+    );
+
+    return {
+      data: expenses,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   private createExpense(
     em: EntityManager,
     data: {
