@@ -28,11 +28,11 @@
     # Copy compiled application
     COPY --from=builder /app/dist ./dist
     
-    # If MikroORM config or other runtime files are needed
+    # Copy MikroORM config if needed at runtime
     COPY --from=builder /app/src/config ./src/config
     
-    # SQLite database directory
-    RUN mkdir -p /app/data
+    # Copy existing SQLite database
+    COPY expense-sharing.db ./expense-sharing.db
     
     EXPOSE 3000
     
